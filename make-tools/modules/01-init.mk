@@ -30,7 +30,7 @@ init-all:
 	@$(MAKE) --no-print-directory git-init
 	@$(MAKE) --no-print-directory gh-repo
 
-## setup-project: Inicjalizuje projekt: alr init + struktura src/ + szablony
+## setup-project: Inicjalizuje projekt: struktura src/, data/, tests/ + szablony
 setup-project:
 	@echo "$(C_BLUE)==> SETUP: inicjalizacja projektu Ada / Alire...$(C_RESET)"
 	@DIR_NAME="$$(basename "$$PWD")"; \
@@ -59,63 +59,81 @@ setup-project:
 	printf "Adres e-mail [%s]: " "$$MAIL"; \
 	read -r INPUT_MAIL || INPUT_MAIL=""; \
 	if [ -n "$$INPUT_MAIL" ]; then MAIL="$$INPUT_MAIL"; fi; \
-	GH_USR="$(GITHUB_USER)"; \
-	printf "Login GitHub [%s]: " "$$GH_USR"; \
-	read -r INPUT_GH || INPUT_GH=""; \
-	if [ -n "$$INPUT_GH" ]; then GH_USR="$$INPUT_GH"; fi; \
+	GH_USR="$$(gh api user -q .login 2>/dev/null || echo "$(GITHUB_USER)")"; \
 	GH_URL="https://github.com/$$GH_USR"; \
 	CURR_DATE="$$(date +%Y-%m-%d)"; \
 	CURR_YEAR="$$(date +%Y)"; \
-	echo "$(C_GREEN)  [1/6] Skrzynka: $$N | Jednostka: $$GPR_ID | Autor: $$AUTH <$$MAIL>$(C_RESET)"; \
-	if [ -f alire.toml ]; then \
-		echo "  [2/6] alire.toml już istnieje - pomijam alr init"; \
-	elif command -v alr >/dev/null 2>&1; then \
-		alr init -n --in-place --bin "$$N" || exit 1; \
+	echo "$(C_GREEN)  [1/6] Skrzynka: $$N | Jednostka: $$GPR_ID | Autor: $$AUTH (GitHub: $$GH_USR)$(C_RESET)"; \
+	if [ ! -f alire.toml ] && command -v alr >/dev/null 2>&1; then \
+		echo "  [2/6] Inicjalizacja Alire: alr -n init --in-place --no-skel $$N"; \
+		alr -n init --in-place --no-skel "$$N" >/dev/null 2>&1 || true; \
 	fi; \
-	echo "  [3/6] Tworzenie katalogów: src/($(SRC_SUBDIRS)) tests doc bin obj data/config"; \
+	echo "  [3/6] Tworzenie katalogów: src/ tests/ doc/ bin/ obj/ data/($$N config/toml i18n json text)"; \
 	for d in $(SRC_SUBDIRS); do mkdir -p "src/$$d"; touch "src/$$d/.gitkeep"; done; \
-	mkdir -p tests doc bin obj data/config; \
-	echo "  [4/6] Kopiowanie i podstawianie szablonów z: $(MAKE_TOOLS_DIR)/templates"; \
+	mkdir -p tests doc bin obj "data/$$N" data/config/toml data/i18n data/json data/text; \
+	rm -f "src/$$N.adb"; \
+	echo "  [4/6] Wdrażanie pełnych szablonów z: $(MAKE_TOOLS_DIR)/templates"; \
 	if [ -d "$(MAKE_TOOLS_DIR)/templates" ]; then \
-		for s in "$(MAKE_TOOLS_DIR)/templates"/*.tpl; do \
+		for s in "$(MAKE_TOOLS_DIR)/templates"/*.tpl "$(MAKE_TOOLS_DIR)/templates"/.*.tpl; do \
 			[ -f "$$s" ] || continue; \
-			case "$$s" in *.githook.tpl|*project.gpr.tpl) continue ;; esac; \
+			case "$$s" in *.githook.tpl|*project.gpr.tpl|*project.adc.tpl|*main.adb.tpl|*alire.toml.tpl) continue ;; esac; \
 			d="$$(basename "$$s" .tpl)"; \
-			if [ ! -f "$$d" ]; then \
-				case "$$d" in \
-					.editorconfig|.clang-format|.cz.toml|.gitignore) \
-						cp "$$s" "$$d";; \
-					*) \
-						sed -e "s|@PROJECT@|$$GPR_ID|g" -e "s|@PROJECT_LOWER@|$$N|g" \
-						    -e "s|@YEAR@|$$CURR_YEAR|g" -e "s|@DATE@|$$CURR_DATE|g" \
-						    -e "s|@AUTHOR@|$$AUTH|g" -e "s|@EMAIL@|$$MAIL|g" \
-						    -e "s|@GITHUB@|$$GH_URL|g" "$$s" > "$$d";; \
-				esac; \
-				echo "        [OK] $$d"; \
-			else echo "        [pominięto] $$d"; fi; \
+			case "$$d" in \
+				.editorconfig|.clang-format|.cz.toml|.gitignore) \
+					cp "$$s" "$$d";; \
+				*) \
+					sed -e "s|@PROJECT@|$$GPR_ID|g" -e "s|@PROJECT_LOWER@|$$N|g" \
+					    -e "s|@YEAR@|$$CURR_YEAR|g" -e "s|@DATE@|$$CURR_DATE|g" \
+					    -e "s|@AUTHOR@|$$AUTH|g" -e "s|@EMAIL@|$$MAIL|g" \
+					    -e "s|@GITHUB_USER@|$$GH_USR|g" \
+					    -e "s|@GITHUB@|$$GH_URL|g" "$$s" > "$$d";; \
+			esac; \
+			echo "        [OK] $$d"; \
 		done; \
+		if [ -f "$(MAKE_TOOLS_DIR)/templates/alire.toml.tpl" ]; then \
+			sed -e "s|@PROJECT@|$$GPR_ID|g" -e "s|@PROJECT_LOWER@|$$N|g" \
+			    -e "s|@YEAR@|$$CURR_YEAR|g" -e "s|@DATE@|$$CURR_DATE|g" \
+			    -e "s|@AUTHOR@|$$AUTH|g" -e "s|@EMAIL@|$$MAIL|g" \
+			    -e "s|@GITHUB_USER@|$$GH_USR|g" \
+			    -e "s|@GITHUB@|$$GH_URL|g" \
+			    "$(MAKE_TOOLS_DIR)/templates/alire.toml.tpl" > alire.toml; \
+			echo "        [NADPISANO] alire.toml (Pełny manifest ze SPARK, AUnit, TOML)"; \
+		fi; \
 		if [ -f "$(MAKE_TOOLS_DIR)/templates/project.gpr.tpl" ]; then \
 			GPR_DEST="$$N.gpr"; \
-			if [ ! -f "$$GPR_DEST" ]; then \
-				sed -e "s|@PROJECT@|$$GPR_ID|g" -e "s|@PROJECT_LOWER@|$$N|g" \
-				    -e "s|@YEAR@|$$CURR_YEAR|g" -e "s|@DATE@|$$CURR_DATE|g" \
-				    -e "s|@AUTHOR@|$$AUTH|g" -e "s|@EMAIL@|$$MAIL|g" \
-				    -e "s|@GITHUB@|$$GH_URL|g" \
-				    "$(MAKE_TOOLS_DIR)/templates/project.gpr.tpl" > "$$GPR_DEST"; \
-				echo "        [OK] $$GPR_DEST (Projekt GNAT)"; \
-			else echo "        [pominięto] $$GPR_DEST"; fi; \
+			sed -e "s|@PROJECT@|$$GPR_ID|g" -e "s|@PROJECT_LOWER@|$$N|g" \
+			    -e "s|@YEAR@|$$CURR_YEAR|g" -e "s|@DATE@|$$CURR_DATE|g" \
+			    -e "s|@AUTHOR@|$$AUTH|g" -e "s|@EMAIL@|$$MAIL|g" \
+			    -e "s|@GITHUB_USER@|$$GH_USR|g" \
+			    -e "s|@GITHUB@|$$GH_URL|g" \
+			    "$(MAKE_TOOLS_DIR)/templates/project.gpr.tpl" > "$$GPR_DEST"; \
+			echo "        [NADPISANO] $$GPR_DEST (Pełny plik projektu GNAT z 13 pakietami)"; \
+		fi; \
+		if [ -f "$(MAKE_TOOLS_DIR)/templates/project.adc.tpl" ]; then \
+			ADC_DEST="data/config/$$N.adc"; \
+			sed -e "s|@PROJECT@|$$GPR_ID|g" -e "s|@PROJECT_LOWER@|$$N|g" \
+			    -e "s|@DATE@|$$CURR_DATE|g" \
+			    "$(MAKE_TOOLS_DIR)/templates/project.adc.tpl" > "$$ADC_DEST"; \
+			echo "        [OK] $$ADC_DEST (Pragmy kompilatora GNAT)"; \
+		fi; \
+		if [ -f "$(MAKE_TOOLS_DIR)/templates/main.adb.tpl" ]; then \
+			sed -e "s|@PROJECT@|$$GPR_ID|g" -e "s|@PROJECT_LOWER@|$$N|g" \
+			    -e "s|@YEAR@|$$CURR_YEAR|g" -e "s|@DATE@|$$CURR_DATE|g" \
+			    -e "s|@AUTHOR@|$$AUTH|g" -e "s|@EMAIL@|$$MAIL|g" \
+			    -e "s|@GITHUB@|$$GH_URL|g" \
+			    "$(MAKE_TOOLS_DIR)/templates/main.adb.tpl" > "src/main.adb"; \
+			echo "        [OK] src/main.adb (Punkt wejścia programu)"; \
 		fi; \
 		if [ -d "$(MAKE_TOOLS_DIR)/templates/tests" ]; then \
 			for ts in "$(MAKE_TOOLS_DIR)/templates/tests"/*.tpl; do \
 				[ -f "$$ts" ] || continue; \
 				td="tests/$$(basename "$$ts" .tpl)"; \
-				if [ ! -f "$$td" ]; then \
-					sed -e "s|@PROJECT@|$$GPR_ID|g" -e "s|@PROJECT_LOWER@|$$N|g" \
-					    -e "s|@YEAR@|$$CURR_YEAR|g" -e "s|@DATE@|$$CURR_DATE|g" \
-					    -e "s|@AUTHOR@|$$AUTH|g" -e "s|@EMAIL@|$$MAIL|g" \
-					    -e "s|@GITHUB@|$$GH_URL|g" "$$ts" > "$$td"; \
-					echo "        [OK] $$td (Uprząż AUnit)"; \
-				else echo "        [pominięto] $$td"; fi; \
+				sed -e "s|@PROJECT@|$$GPR_ID|g" -e "s|@PROJECT_LOWER@|$$N|g" \
+				    -e "s|@YEAR@|$$CURR_YEAR|g" -e "s|@DATE@|$$CURR_DATE|g" \
+				    -e "s|@AUTHOR@|$$AUTH|g" -e "s|@EMAIL@|$$MAIL|g" \
+				    -e "s|@GITHUB_USER@|$$GH_USR|g" \
+				    -e "s|@GITHUB@|$$GH_URL|g" "$$ts" > "$$td"; \
+				echo "        [OK] $$td (Uprząż AUnit)"; \
 			done; \
 		fi; \
 	fi; \
@@ -151,11 +169,11 @@ gh-repo:
 	@if ! command -v gh >/dev/null 2>&1; then echo "$(C_RED)Brak gh$(C_RESET)"; exit 1; fi
 	@if [ ! -d .git ]; then $(MAKE) --no-print-directory git-init; fi
 	@R="$(REPO_NAME)"; if [ -z "$$R" ]; then R="$$(basename "$$PWD")"; fi; \
-	U="$$(gh api user -q .login)" || exit 1; \
+	U="$$(gh api user -q .login 2>/dev/null || echo "$(GITHUB_USER)")"; \
 	if gh repo view "$$U/$$R" >/dev/null 2>&1; then \
 		echo "-> Repozytorium $$U/$$R już istnieje na GitHubie - pomijam tworzenie"; \
 	else \
-		echo "-> Tworzenie repozytorium $$U/$$R na GitHubie..."; \
+		echo "-> Tworzenie repozytorium $$U/$$R na GitHubie (SSH)..."; \
 		gh repo create "$$R" --$(REPO_VISIBILITY) || exit 1; \
 	fi; \
 	git remote remove origin 2>/dev/null || true; \

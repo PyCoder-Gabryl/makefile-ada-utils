@@ -1,18 +1,18 @@
 #  ==============================================================================
-#  PROJECT:          Gabyx
-#  AUTHOR:           PyCoder Gabryl
-#  EMAIL:            pycoder.gabryl@gmail.com
-#  GITHUB:           https://github.com/PyCoder-Gabryl/
+#  PROJECT:          @PROJECT@
+#  AUTHOR:           @AUTHOR@
+#  EMAIL:            @EMAIL@
+#  GITHUB:           @GITHUB@
 #  LICENSE:          Apache License 2.0
 #  ------------------------------------------------------------------------------
-#  DESCRIPTION:      Manifest projektu Alire dla gry Gabyx.
-#                    Zarządza metadanymi, zależnościami (Raylib, TOML, SPARK)
+#  DESCRIPTION:      Manifest projektu Alire dla @PROJECT@.
+#                    Zarządza metadanymi, zależnościami (TOML, SPARK, AUnit)
 #                    oraz konfiguruje izolowane środowisko budowania.
 #                    Zawiera specyficzne poprawki dla konsolidatora macOS
 #                    oraz definicje profili kompilacji (debug/release).
 #  ------------------------------------------------------------------------------
 #  PATH:             alire.toml
-#  CREATED:          2026-08-04
+#  CREATED:          @DATE@
 #  ==============================================================================
 
 
@@ -20,33 +20,33 @@
 #  METADANE PROJEKTU
 #  ============================================================================
 
-name = "bielik"
-description = "Bielik CLI TXT"
+name = "@PROJECT_LOWER@"
+description = "@PROJECT@ CLI Application"
 long-description = """
-Interfejs w Adzie do komunikacji z lokalnym modelem Bielika przez Ollamę.
+Aplikacja w języku Ada 2022 ze SPARK i testami AUnit utworzona z szablonu.
 """
 version = "0.1.0"
 
-authors = ["PyCoder Gabryl"]
-maintainers = ["PyCoder Gabryl <pycoder.gabryl@gmail.com>"]
-maintainers-logins = ["pycoder-gabryl"]
+authors = ["@AUTHOR@"]
+maintainers = ["@AUTHOR@ <@EMAIL@>"]
+maintainers-logins = ["@GITHUB_USER@"]
 licenses = "Apache-2.0"
-website = "https://github.com/PyCoder-Gabryl/bielik-cli"
-tags = ["ada", "framework", "spark", "aunit", "txt-asistant", "bielik", "toml"]
+website = "@GITHUB@/@PROJECT_LOWER@"
+tags = ["ada", "framework", "spark", "aunit", "@PROJECT_LOWER@", "toml"]
 
 #  ============================================================================
 #  INTEGRACJA Z GNAT / GPRBUILD
 #  ============================================================================
 
-executables = ["bielik"]
-project-files = ["bielik.gpr"]
+executables = ["@PROJECT_LOWER@"]
+project-files = ["@PROJECT_LOWER@.gpr"]
 
 #  ============================================================================
 #  WARUNKOWE ZARZĄDZANIE ŚRODOWISKIEM (DEPENDENT ON OS)
 #  ============================================================================
 
 [environment.'case(os)'.macos]
-#  EDUKACJA: Ustawienie zmiennej platformy, aby plik projektu bielik.gpr
+#  EDUKACJA: Ustawienie zmiennej platformy, aby plik projektu @PROJECT_LOWER@.gpr
 #  poprawnie rozpoznał system macOS i zaaplikował odpowiednie flagi linkera.
 ALIRE_HOST_OS.set = "macos"
 
